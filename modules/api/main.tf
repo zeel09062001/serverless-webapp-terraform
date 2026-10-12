@@ -82,6 +82,12 @@ resource "aws_apigatewayv2_route" "hello" {
   target    = "integrations/${aws_apigatewayv2_integration.hello.id}"
 }
 
+resource "aws_apigatewayv2_route" "time" {
+  api_id    = aws_apigatewayv2_api.this.id
+  route_key = "GET /time"
+  target    = "integrations/${aws_apigatewayv2_integration.hello.id}"
+}
+
 # The live "stage" that serves traffic; auto_deploy publishes changes
 resource "aws_apigatewayv2_stage" "default" {
   api_id      = aws_apigatewayv2_api.this.id
