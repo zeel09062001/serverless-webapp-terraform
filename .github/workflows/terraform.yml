@@ -16,7 +16,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  TF_VERSION: "v1.16.1"
+  TF_VERSION: "1.16.1"
+  TF_PLUGIN_CACHE_DIR: /home/runner/.terraform.d/plugin-cache
 
 jobs:
   plan:
@@ -41,12 +42,23 @@ jobs:
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
+      - name: Create provider cache folder
+        run: mkdir -p "$TF_PLUGIN_CACHE_DIR"
+
+      - name: Restore provider cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TF_PLUGIN_CACHE_DIR }}
+          key: terraform-providers-${{ runner.os }}-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: |
+            terraform-providers-${{ runner.os }}-
+
       - name: Check formatting
         run: terraform fmt -check -recursive
         working-directory: .
 
       - name: Init
-        run: terraform init -input=false
+        run: terraform init -input=false -lockfile=readonly
 
       - name: Validate
         run: terraform validate
@@ -77,8 +89,19 @@ jobs:
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
+      - name: Create provider cache folder
+        run: mkdir -p "$TF_PLUGIN_CACHE_DIR"
+
+      - name: Restore provider cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TF_PLUGIN_CACHE_DIR }}
+          key: terraform-providers-${{ runner.os }}-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: |
+            terraform-providers-${{ runner.os }}-
+
       - name: Init
-        run: terraform init -input=false
+        run: terraform init -input=false -lockfile=readonly
 
       - name: Apply
         run: terraform apply -auto-approve -input=false
