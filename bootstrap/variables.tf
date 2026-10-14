@@ -20,3 +20,13 @@ variable "github_repo" {
   type        = string
   default     = "serverless-webapp-terraform"
 }
+
+variable "github_owner_id" {
+  description = "Numeric ID of your GitHub account (never changes)"
+  type        = string
+}
+
+variable "github_repo_id" {
+  description = "Numeric ID of your GitHub repository (never changes)"
+  type        = string
+}
