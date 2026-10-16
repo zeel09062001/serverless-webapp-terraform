@@ -93,8 +93,7 @@ resource "aws_lambda_function" "api" {
   # Configuration passed to the code as environment variables
   environment {
     variables = {
-      TABLE_NAME       = var.table_name
-      ALLOW_DEBUG_USER = tostring(var.allow_debug_user)
+      TABLE_NAME = var.table_name
     }
   }
 
@@ -118,6 +117,21 @@ resource "aws_apigatewayv2_integration" "lambda" {
   payload_format_version = "2.0"
 }
 
+# Verifies the login token on every request BEFORE the Lambda runs.
+# It checks the signature (using Cognito's public keys), the issuer,
+# the expiry time, and that the token was issued for our app client.
+resource "aws_apigatewayv2_authorizer" "cognito" {
+  api_id           = aws_apigatewayv2_api.this.id
+  name             = "cognito-jwt"
+  authorizer_type  = "JWT"
+  identity_sources = ["$request.header.Authorization"]
+
+  jwt_configuration {
+    issuer   = var.cognito_issuer_url
+    audience = [var.cognito_client_id]
+  }
+}
+
 # One route resource per entry in local.routes
 resource "aws_apigatewayv2_route" "this" {
   for_each = local.routes
@@ -125,6 +139,10 @@ resource "aws_apigatewayv2_route" "this" {
   api_id    = aws_apigatewayv2_api.this.id
   route_key = each.value
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+
+  # Every route requires a valid Cognito token
+  authorization_type = "JWT"
+  authorizer_id      = aws_apigatewayv2_authorizer.cognito.id
 }
 
 resource "aws_apigatewayv2_stage" "default" {

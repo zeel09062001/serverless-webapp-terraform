@@ -6,7 +6,6 @@ calls the repository, and builds the HTTP response.
 import base64
 import json
 import logging
-import os
 import re
 import uuid
 from datetime import datetime, timezone
@@ -17,15 +16,11 @@ import repository
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# Dev-only shortcut until Cognito is added. Never "true" in prod.
-ALLOW_DEBUG_USER = os.environ.get("ALLOW_DEBUG_USER") == "true"
-
 CATEGORIES = {"food", "travel", "bills", "shopping", "entertainment", "health", "other"}
 MAX_AMOUNT_CENTS = 100_000_000  # $1,000,000
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 MONTH_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
 CURRENCY_RE = re.compile(r"^[A-Z]{3}$")
-DEBUG_USER_RE = re.compile(r"^[A-Za-z0-9-]{1,64}$")
 
 
 class BadRequest(Exception):
@@ -54,21 +49,14 @@ def not_found():
 
 
 def get_user_id(event):
-    """Who is calling? Real login token first, dev header as a fallback."""
+    """The user's ID from the login token. API Gateway has already verified it."""
     claims = (
         event.get("requestContext", {})
         .get("authorizer", {})
         .get("jwt", {})
         .get("claims", {})
     )
-    if claims.get("sub"):
-        return claims["sub"]  # verified by API Gateway once Cognito is added
-
-    if ALLOW_DEBUG_USER:
-        debug_user = (event.get("headers") or {}).get("x-debug-user", "")
-        if DEBUG_USER_RE.match(debug_user):
-            return debug_user
-    return None
+    return claims.get("sub")
 
 
 def path_expense_id(event):

@@ -28,8 +28,12 @@ variable "index_arns" {
   type        = string
 }
 
-variable "allow_debug_user" {
-  description = "Accept the X-Debug-User header. Dev only, before Cognito exists."
-  type        = bool
-  default     = false
+variable "cognito_issuer_url" {
+  description = "Issuer URL of the Cognito user pool"
+  type        = string
+}
+
+variable "cognito_client_id" {
+  description = "Cognito app client ID allowed to call this API"
+  type        = string
 }
