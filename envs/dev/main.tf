@@ -23,10 +23,25 @@ provider "aws" {
   }
 }
 
-# Call the API module. Later: database, frontend, auth, monitoring modules go here too.
+# Expenses table (single-table design)
+module "database" {
+  source              = "../../modules/database"
+  project_name        = var.project_name
+  environment         = var.environment
+  deletion_protection = false # dev can be torn down freely
+}
+
+# Expenses API: Lambda + API Gateway
 module "api" {
   source            = "../../modules/api"
   project_name      = var.project_name
   environment       = var.environment
-  lambda_source_dir = "${path.root}/../../app/lambdas/hello"
+  lambda_source_dir = "${path.root}/../../app/lambdas/expenses_api"
+
+  # Wiring: outputs of the database module become inputs of the API module
+  table_name = module.database.table_name
+  table_arn  = module.database.table_arn
+  index_arns = module.database.index_arns
+
+  allow_debug_user = true # TEMPORARY: remove once Cognito is added
 }
