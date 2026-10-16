@@ -31,6 +31,15 @@ module "database" {
   deletion_protection = false # dev can be torn down freely
 }
 
+# User accounts and login
+module "auth" {
+  source              = "../../modules/auth"
+  project_name        = var.project_name
+  environment         = var.environment
+  deletion_protection = false # dev can be torn down freely
+  allow_password_auth = true  # lets us test login from the CLI in dev
+}
+
 # Expenses API: Lambda + API Gateway
 module "api" {
   source            = "../../modules/api"
@@ -43,5 +52,6 @@ module "api" {
   table_arn  = module.database.table_arn
   index_arns = module.database.index_arns
 
-  allow_debug_user = true # TEMPORARY: remove once Cognito is added
+  cognito_issuer_url = module.auth.issuer_url
+  cognito_client_id  = module.auth.client_id
 }
