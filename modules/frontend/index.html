@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Expense Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <main>
+        <h1>Expense Tracker</h1>
+        <p>Served from a private S3 bucket through CloudFront.</p>
+        <h2>Configuration loaded from config.js</h2>
+        <ul id="config"></ul>
+    </main>
+    <!-- config.js must load first: it defines window.APP_CONFIG -->
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>

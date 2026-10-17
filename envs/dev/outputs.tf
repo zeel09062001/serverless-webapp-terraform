@@ -18,3 +18,7 @@ output "user_pool_id" {
 output "user_pool_client_id" {
   value = module.auth.client_id
 }
+
+output "website_url" {
+  value = module.frontend.website_url
+}
