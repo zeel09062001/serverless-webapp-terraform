@@ -37,3 +37,7 @@ variable "cognito_client_id" {
   description = "Cognito app client ID allowed to call this API"
   type        = string
 }
+variable "cors_allowed_origins" {
+  description = "Website origins allowed to call the API from a browser"
+  type        = list(string)
+}

@@ -108,6 +108,15 @@ resource "aws_lambda_function" "api" {
 resource "aws_apigatewayv2_api" "this" {
   name          = "${local.name}-api"
   protocol_type = "HTTP"
+
+  # Which websites may call this API from a browser.
+  # API Gateway answers the browser's preflight (OPTIONS) requests itself.
+  cors_configuration {
+    allow_origins = var.cors_allowed_origins
+    allow_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    allow_headers = ["authorization", "content-type"]
+    max_age       = 3600 # browsers may remember the answer for 1 hour
+  }
 }
 
 resource "aws_apigatewayv2_integration" "lambda" {
