@@ -9,15 +9,125 @@
 </head>
 
 <body>
+    <header class="topbar">
+        <span class="brand">Expense Tracker</span>
+        <span id="user-info" hidden>
+            <span id="user-email"></span>
+            <button id="sign-out" type="button" class="link">Sign out</button>
+        </span>
+    </header>
+
     <main>
-        <h1>Expense Tracker</h1>
-        <p>Served from a private S3 bucket through CloudFront.</p>
-        <h2>Configuration loaded from config.js</h2>
-        <ul id="config"></ul>
+        <p id="message" class="message" hidden></p>
+
+        <!-- ===================== SIGNED-OUT VIEW ===================== -->
+        <section id="auth-view" hidden>
+            <form id="sign-in-form" class="card">
+                <h2>Sign in</h2>
+                <label>Email
+                    <input name="email" type="email" required autocomplete="username">
+                </label>
+                <label>Password
+                    <input name="password" type="password" required autocomplete="current-password">
+                </label>
+                <button type="submit">Sign in</button>
+                <p class="switch">No account?
+                    <button type="button" class="link" data-show="sign-up-form">Create one</button>
+                </p>
+            </form>
+
+            <form id="sign-up-form" class="card" hidden>
+                <h2>Create account</h2>
+                <label>Email
+                    <input name="email" type="email" required autocomplete="username">
+                </label>
+                <label>Password
+                    <input name="password" type="password" required minlength="12" autocomplete="new-password">
+                </label>
+                <p class="hint">At least 12 characters, including uppercase, lowercase and a number.</p>
+                <button type="submit">Create account</button>
+                <p class="switch">Already have an account?
+                    <button type="button" class="link" data-show="sign-in-form">Sign in</button>
+                </p>
+            </form>
+
+            <form id="confirm-form" class="card" hidden>
+                <h2>Verify your email</h2>
+                <p class="hint">We sent a 6-digit code to <strong id="confirm-email"></strong>.</p>
+                <label>Code
+                    <input name="code" required inputmode="numeric" autocomplete="one-time-code">
+                </label>
+                <button type="submit">Verify</button>
+                <p class="switch">
+                    <button type="button" class="link" id="resend-code">Send a new code</button>
+                </p>
+            </form>
+        </section>
+
+        <!-- ===================== SIGNED-IN VIEW ===================== -->
+        <section id="app-view" hidden>
+            <form id="expense-form" class="card">
+                <h2 id="form-title">Add expense</h2>
+                <div class="grid">
+                    <label>Amount
+                        <input name="amount" required inputmode="decimal" placeholder="12.50">
+                    </label>
+                    <label>Date
+                        <input name="date" type="date" required>
+                    </label>
+                    <label>Category
+                        <select name="category" required>
+                            <option value="food">Food</option>
+                            <option value="travel">Travel</option>
+                            <option value="bills">Bills</option>
+                            <option value="shopping">Shopping</option>
+                            <option value="entertainment">Entertainment</option>
+                            <option value="health">Health</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </label>
+                    <label>Merchant
+                        <input name="merchant" required maxlength="100">
+                    </label>
+                </div>
+                <label>Note (optional)
+                    <input name="note" maxlength="500">
+                </label>
+                <div class="actions">
+                    <button type="submit">Add expense</button>
+                    <button type="button" id="cancel-edit" class="secondary" hidden>Cancel</button>
+                </div>
+            </form>
+
+            <div class="card">
+                <div class="list-header">
+                    <h2>Expenses</h2>
+                    <input id="month" type="month" aria-label="Month">
+                </div>
+                <p id="total" class="total"></p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Merchant</th>
+                                <th>Category</th>
+                                <th class="num">Amount</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="expense-rows"></tbody>
+                    </table>
+                </div>
+                <p id="empty" class="hint" hidden>No expenses this month yet.</p>
+            </div>
+        </section>
     </main>
-    <!-- config.js must load first: it defines window.APP_CONFIG -->
+
+    <!-- Load order matters: the library and config first, then our app -->
+    <script src="vendor/amazon-cognito-identity.min.js"></script>
     <script src="config.js"></script>
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 
 </html>

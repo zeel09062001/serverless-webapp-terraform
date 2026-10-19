@@ -169,7 +169,7 @@ resource "aws_s3_bucket_policy" "site" {
 # (config.js is NOT here; it is generated in envs/<env>, see the explanation.)
 # -----------------------------------------------------------------------------
 resource "aws_s3_object" "site_files" {
-  for_each = fileset(var.site_dir, "**")
+  for_each = setsubtract(fileset(var.site_dir, "**"), ["config.js"])
 
   bucket       = aws_s3_bucket.site.id
   key          = each.value
