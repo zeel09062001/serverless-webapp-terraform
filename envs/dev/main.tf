@@ -104,6 +104,30 @@ module "monthly_report" {
   alarm_topic_arn   = module.monitoring.alerts_topic_arn
 }
 
+# Dashboard, alarms and saved log queries for the whole system.
+# Depends on every other module, so it must come last in the dependency chain.
+module "observability" {
+  source       = "../../modules/observability"
+  project_name = var.project_name
+  environment  = var.environment
+  aws_region   = var.aws_region
+
+  api_id                    = module.api.api_id
+  api_access_log_group_name = module.api.access_log_group_name
+
+  lambda_function_names = {
+    api            = module.api.lambda_function_name
+    receipt_worker = module.receipt_processing.worker_function_name
+    monthly_report = module.monthly_report.function_name
+  }
+
+  receipts_queue_name = module.receipt_processing.queue_name
+  receipts_dlq_name   = module.receipt_processing.dlq_name
+  report_dlq_name     = module.monthly_report.dlq_name
+
+  alarm_topic_arn = module.monitoring.alerts_topic_arn
+}
+
 # Expenses API: Lambda + API Gateway
 module "api" {
   source            = "../../modules/api"
