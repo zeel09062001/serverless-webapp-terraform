@@ -32,3 +32,6 @@ output "receipts_dlq_url" {
 output "monthly_report_function" {
   value = module.monthly_report.function_name
 }
+output "dashboard_url" {
+  value = module.observability.dashboard_url
+}

@@ -55,6 +55,11 @@ resource "aws_iam_role_policy_attachment" "report_logs" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+resource "aws_iam_role_policy_attachment" "report_xray" {
+  role       = aws_iam_role.report.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+}
+
 data "aws_iam_policy_document" "report" {
   # Read each user's expenses for the month (the GSI query)
   statement {
@@ -122,6 +127,10 @@ resource "aws_lambda_function" "report" {
   # Lambda's hard maximum is 15 minutes (see the fan-out discussion).
   timeout     = 300
   memory_size = 256
+
+  tracing_config {
+    mode = "Active"
+  }
 
   environment {
     variables = {

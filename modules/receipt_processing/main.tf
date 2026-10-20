@@ -114,6 +114,11 @@ resource "aws_iam_role_policy_attachment" "worker_logs" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+resource "aws_iam_role_policy_attachment" "worker_xray" {
+  role       = aws_iam_role.worker.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+}
+
 data "aws_iam_policy_document" "worker" {
   # Lambda polls the queue using the FUNCTION'S role
   statement {
@@ -169,7 +174,9 @@ resource "aws_lambda_function" "worker" {
   source_code_hash = data.archive_file.worker.output_base64sha256
   timeout          = 10
   memory_size      = 256
-
+  tracing_config {
+    mode = "Active" # record an X-Ray trace for every invocation
+  }
   environment {
     variables = {
       TABLE_NAME      = var.table_name
