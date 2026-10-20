@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 import repository
+import storage
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -164,10 +165,48 @@ def handle_update(user_id, event):
 
 def handle_delete(user_id, event):
     expense_id = path_expense_id(event)
-    if expense_id and repository.delete_expense(user_id, expense_id):
-        return response(204)
-    return not_found()
+    if not expense_id or not repository.delete_expense(user_id, expense_id):
+        return not_found()
 
+    try:
+        storage.delete_receipt(user_id, expense_id)
+    except Exception:
+        logger.exception("Failed to delete receipt for expense %s", expense_id)
+
+    return response(204)
+
+def handle_receipt_upload(user_id, event):
+    expense_id = path_expense_id(event)
+    expense = repository.get_expense(user_id, expense_id) if expense_id else None
+    if not expense:
+        return not_found()  # also covers "this expense belongs to someone else"
+
+    content_type = parse_body(event).get("contentType")
+    if content_type not in storage.ALLOWED_CONTENT_TYPES:
+        allowed = ", ".join(sorted(storage.ALLOWED_CONTENT_TYPES))
+        raise BadRequest(f"contentType must be one of: {allowed}")
+
+    upload = storage.create_upload_form(user_id, expense_id, content_type)
+    return response(200, {
+        "upload": upload,
+        "maxBytes": storage.MAX_RECEIPT_BYTES,
+        "expiresInSeconds": storage.UPLOAD_LINK_SECONDS,
+    })
+
+
+def handle_receipt_download(user_id, event):
+    expense_id = path_expense_id(event)
+    expense = repository.get_expense(user_id, expense_id) if expense_id else None
+    if not expense:
+        return not_found()
+
+    if not storage.receipt_exists(user_id, expense_id):
+        return response(404, {"error": "This expense has no receipt"})
+
+    return response(200, {
+        "url": storage.create_download_link(user_id, expense_id),
+        "expiresInSeconds": storage.DOWNLOAD_LINK_SECONDS,
+    })
 
 ROUTES = {
     "POST /expenses": handle_create,
@@ -175,6 +214,9 @@ ROUTES = {
     "GET /expenses/{id}": handle_get,
     "PUT /expenses/{id}": handle_update,
     "DELETE /expenses/{id}": handle_delete,
+    "POST /expenses/{id}/receipt": handle_receipt_upload,
+    "GET /expenses/{id}/receipt": handle_receipt_download,
+
 }
 
 

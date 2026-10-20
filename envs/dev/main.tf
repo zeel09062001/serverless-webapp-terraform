@@ -23,6 +23,14 @@ provider "aws" {
   }
 }
 
+locals {
+  # Websites allowed to call our API and buckets from a browser
+  browser_origins = [
+    module.frontend.website_url,
+    "http://localhost:8080", # local development
+  ]
+}
+
 # Expenses table (single-table design)
 module "database" {
   source              = "../../modules/database"
@@ -49,6 +57,13 @@ module "frontend" {
   site_dir     = "${path.root}/../../app/frontend"
 }
 
+module "receipts" {
+  source               = "../../modules/receipts"
+  project_name         = var.project_name
+  environment          = var.environment
+  cors_allowed_origins = local.browser_origins
+}
+
 # Expenses API: Lambda + API Gateway
 module "api" {
   source            = "../../modules/api"
@@ -61,12 +76,12 @@ module "api" {
   table_arn  = module.database.table_arn
   index_arns = module.database.index_arns
 
-  cognito_issuer_url = module.auth.issuer_url
-  cognito_client_id  = module.auth.client_id
-  cors_allowed_origins = [
-    module.frontend.website_url,
-    "http://localhost:8080",
-  ]
+  cognito_issuer_url   = module.auth.issuer_url
+  cognito_client_id    = module.auth.client_id
+  cors_allowed_origins = local.browser_origins
+
+  receipts_bucket_name = module.receipts.bucket_name
+  receipts_bucket_arn  = module.receipts.bucket_arn
 }
 
 # Website configuration, generated from other modules' outputs.
