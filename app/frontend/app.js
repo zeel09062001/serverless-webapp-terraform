@@ -307,6 +307,10 @@ for (const link of document.querySelectorAll("[data-show]")) {
 $("sign-out").addEventListener("click", () => {
     auth.signOut();
     expenses = [];
+    $("expense-rows").replaceChildren(); // remove the previous user's rows
+    $("total").textContent = "";
+    $("user-email").textContent = "";
+    resetExpenseForm(); // clear any half-edited expense
     showAuthView();
     showMessage("You have been signed out.", "info");
 });
