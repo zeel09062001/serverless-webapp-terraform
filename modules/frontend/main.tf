@@ -29,7 +29,7 @@ locals {
     "script-src 'self'",
     "style-src 'self'",
     "img-src 'self' data: https://*.amazonaws.com",
-    "connect-src 'self' https://*.execute-api.${var.aws_region}.amazonaws.com https://cognito-idp.${var.aws_region}.amazonaws.com",
+    "connect-src 'self' https://*.execute-api.${var.aws_region}.amazonaws.com https://cognito-idp.${var.aws_region}.amazonaws.com https://*.s3.amazonaws.com https://*.s3.${var.aws_region}.amazonaws.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

@@ -53,3 +53,35 @@ export const updateExpense = (id, expense) =>
 
 export const deleteExpense = (id) =>
     request("DELETE", `/expenses/${encodeURIComponent(id)}`);
+
+export const getExpense = (id) =>
+    request("GET", `/expenses/${encodeURIComponent(id)}`);
+
+export const requestReceiptUpload = (id, contentType) =>
+    request("POST", `/expenses/${encodeURIComponent(id)}/receipt`, { contentType });
+
+export const getReceiptLink = (id) =>
+    request("GET", `/expenses/${encodeURIComponent(id)}/receipt`);
+// Uploads straight to S3 using a presigned POST.
+// Note: NO Authorization header. The signed form fields ARE the permission.
+export async function uploadToS3(upload, file) {
+    const form = new FormData();
+    for (const [name, value] of Object.entries(upload.fields)) {
+        form.append(name, value);
+    }
+    form.append("file", file); // must be LAST: S3 ignores fields after the file
+
+    const response = await fetch(upload.url, { method: "POST", body: form });
+
+    if (!response.ok) {
+        // S3 reports errors as XML, e.g. <Error><Code>EntityTooLarge</Code>...
+        const xml = await response.text();
+        const code = new DOMParser()
+            .parseFromString(xml, "application/xml")
+            .querySelector("Code")?.textContent;
+        if (code === "EntityTooLarge") {
+            throw new Error("That file is too large (max 5 MB).");
+        }
+        throw new Error(`Upload failed${code ? ` (${code})` : ""}`);
+    }
+}
