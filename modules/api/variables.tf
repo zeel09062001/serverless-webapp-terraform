@@ -41,3 +41,12 @@ variable "cors_allowed_origins" {
   description = "Website origins allowed to call the API from a browser"
   type        = list(string)
 }
+variable "receipts_bucket_name" {
+  description = "Name of the receipts bucket"
+  type        = string
+}
+
+variable "receipts_bucket_arn" {
+  description = "ARN of the receipts bucket"
+  type        = string
+}

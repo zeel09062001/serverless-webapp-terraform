@@ -14,6 +14,8 @@ locals {
     "GET /expenses/{id}",
     "PUT /expenses/{id}",
     "DELETE /expenses/{id}",
+    "POST /expenses/{id}/receipt",
+    "GET /expenses/{id}/receipt",
   ])
 }
 
@@ -60,9 +62,25 @@ data "aws_iam_policy_document" "dynamodb_access" {
       "dynamodb:Query",
     ]
     resources = [
-      var.table_arn,  # the table itself
-      var.index_arns, # its indexes (needed to Query GSI1)
+      var.table_arn,
+      var.index_arns,
     ]
+  }
+
+  # Upload (signing presigned forms), download, and delete receipt files,
+  # only inside the receipts/ folder
+  statement {
+    sid       = "ReceiptObjects"
+    actions   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
+    resources = ["${var.receipts_bucket_arn}/receipts/*"]
+  }
+
+  # Lets S3 answer "404 not found" instead of "403 forbidden"
+  # when we check whether a receipt exists
+  statement {
+    sid       = "ReceiptExistenceChecks"
+    actions   = ["s3:ListBucket"]
+    resources = [var.receipts_bucket_arn]
   }
 }
 
@@ -83,17 +101,17 @@ resource "aws_lambda_function" "api" {
   function_name    = "${local.name}-expenses-api"
   role             = aws_iam_role.lambda.arn
   runtime          = "python3.12"
-  architectures    = ["arm64"] # Graviton: about 20% cheaper than x86
+  architectures    = ["arm64"]
   handler          = "handler.handler"
   filename         = data.archive_file.api.output_path
   source_code_hash = data.archive_file.api.output_base64sha256
   timeout          = 10
-  memory_size      = 256 # more memory also means more CPU = faster cold starts
-
+  memory_size      = 256
   # Configuration passed to the code as environment variables
   environment {
     variables = {
-      TABLE_NAME = var.table_name
+      TABLE_NAME      = var.table_name
+      RECEIPTS_BUCKET = var.receipts_bucket_name
     }
   }
 
