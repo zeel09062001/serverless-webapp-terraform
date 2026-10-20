@@ -86,6 +86,24 @@ module "receipt_processing" {
   alarm_topic_arn      = module.monitoring.alerts_topic_arn
 }
 
+# Monthly summary emails: Scheduler -> Lambda -> SES
+module "monthly_report" {
+  source            = "../../modules/monthly_report"
+  project_name      = var.project_name
+  environment       = var.environment
+  lambda_source_dir = "${path.root}/../../app/lambdas/monthly_report"
+
+  table_name    = module.database.table_name
+  table_arn     = module.database.table_arn
+  index_arns    = module.database.index_arns
+  user_pool_id  = module.auth.user_pool_id
+  user_pool_arn = module.auth.user_pool_arn
+
+  sender_email      = var.report_sender_email
+  schedule_timezone = "UTC" # change to your own, e.g. "Asia/Kolkata"
+  alarm_topic_arn   = module.monitoring.alerts_topic_arn
+}
+
 # Expenses API: Lambda + API Gateway
 module "api" {
   source            = "../../modules/api"
