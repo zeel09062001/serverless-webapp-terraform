@@ -64,6 +64,28 @@ module "receipts" {
   cors_allowed_origins = local.browser_origins
 }
 
+# Alert emails
+module "monitoring" {
+  source       = "../../modules/monitoring"
+  project_name = var.project_name
+  environment  = var.environment
+  alert_email  = var.alert_email
+}
+
+# Background processing: S3 -> SQS -> worker Lambda, with DLQ and alarm
+module "receipt_processing" {
+  source            = "../../modules/receipt_processing"
+  project_name      = var.project_name
+  environment       = var.environment
+  lambda_source_dir = "${path.root}/../../app/lambdas/receipt_worker"
+
+  receipts_bucket_name = module.receipts.bucket_name
+  receipts_bucket_arn  = module.receipts.bucket_arn
+  table_name           = module.database.table_name
+  table_arn            = module.database.table_arn
+  alarm_topic_arn      = module.monitoring.alerts_topic_arn
+}
+
 # Expenses API: Lambda + API Gateway
 module "api" {
   source            = "../../modules/api"
