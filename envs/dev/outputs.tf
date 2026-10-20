@@ -22,3 +22,10 @@ output "user_pool_client_id" {
 output "website_url" {
   value = module.frontend.website_url
 }
+output "receipts_queue_url" {
+  value = module.receipt_processing.queue_url
+}
+
+output "receipts_dlq_url" {
+  value = module.receipt_processing.dlq_url
+}
