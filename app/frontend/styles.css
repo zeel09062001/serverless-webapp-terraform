@@ -207,3 +207,24 @@ th {
         grid-template-columns: 1fr;
     }
 }
+.receipt-cell {
+    white-space: nowrap;
+}
+
+.receipt-cell button+button,
+.receipt-cell .status+button {
+    margin-left: 8px;
+}
+
+.status {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.status-attached {
+    color: var(--success);
+}
+
+.status-rejected {
+    color: var(--danger);
+}

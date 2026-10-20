@@ -11,6 +11,9 @@ const $ = (id) => document.getElementById(id);
 let pendingEmail = null; // the email waiting for verification
 let editingId = null;    // the expense being edited, or null when adding
 let expenses = [];       // the expenses currently shown
+const RECEIPT_TYPES = ["image/jpeg", "image/png", "application/pdf"];
+const MAX_RECEIPT_BYTES = 5 * 1024 * 1024; // 5 MB, same limit as the server
+const processingIds = new Set(); // expenses whose receipt is being checked
 
 // -----------------------------------------------------------------------------
 // Small helpers
@@ -158,6 +161,8 @@ function renderExpenses() {
             row.children[1].title = expense.note; // shows the note on hover
         }
 
+        row.appendChild(renderReceiptCell(expense));
+
         const actions = document.createElement("td");
         actions.className = "row-actions";
         actions.append(
@@ -170,6 +175,131 @@ function renderExpenses() {
 
     $("empty").hidden = expenses.length > 0;
     $("total").textContent = `Total: ${formatMoney(totalCents)} across ${expenses.length} expense(s)`;
+}
+
+// -----------------------------------------------------------------------------
+// Receipts: upload, background check, view
+// -----------------------------------------------------------------------------
+const STATUS_LABELS = {
+    NONE: "",
+    ATTACHED: "Attached",
+    REJECTED: "Rejected",
+};
+
+function renderReceiptCell(expense) {
+    const cell = document.createElement("td");
+    cell.className = "receipt-cell";
+
+    if (processingIds.has(expense.expenseId)) {
+        const status = document.createElement("span");
+        status.className = "status";
+        status.textContent = "Checking…";
+        cell.appendChild(status);
+        return cell;
+    }
+
+    const receiptStatus = expense.receiptStatus || "NONE";
+    if (STATUS_LABELS[receiptStatus]) {
+        const status = document.createElement("span");
+        status.className = `status status-${receiptStatus.toLowerCase()}`;
+        status.textContent = STATUS_LABELS[receiptStatus];
+        cell.appendChild(status);
+    }
+
+    if (receiptStatus === "ATTACHED") {
+        cell.appendChild(makeButton("View", () => viewReceipt(expense)));
+    }
+    const uploadLabel = receiptStatus === "ATTACHED" ? "Replace" : "Upload";
+    cell.appendChild(makeButton(uploadLabel, () => uploadReceipt(expense)));
+    return cell;
+}
+
+// Opens the system file picker and resolves with the chosen file (or null)
+function pickFile() {
+    return new Promise((resolve) => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = RECEIPT_TYPES.join(",");
+        input.addEventListener("change", () => resolve(input.files[0] || null));
+        input.addEventListener("cancel", () => resolve(null));
+        input.click();
+    });
+}
+
+// The worker runs in the background, so we POLL: ask every 2 seconds
+// whether the expense's receiptCheckedAt has changed, for up to 20 seconds.
+async function waitForReceiptCheck(expenseId, previousCheck) {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        const expense = await api.getExpense(expenseId);
+        if (expense.receiptCheckedAt && expense.receiptCheckedAt !== previousCheck) {
+            return expense;
+        }
+    }
+    return null; // still not checked: tell the user, don't wait forever
+}
+
+async function uploadReceipt(expense) {
+    const file = await pickFile();
+    if (!file) {
+        return;
+    }
+    clearMessage();
+
+    // Quick checks for a friendly message. NOT security: the server and the
+    // worker enforce the real rules, whatever the browser does.
+    if (!RECEIPT_TYPES.includes(file.type)) {
+        showMessage("Receipts must be JPEG, PNG or PDF files.");
+        return;
+    }
+    if (file.size > MAX_RECEIPT_BYTES) {
+        showMessage("That file is too large (max 5 MB).");
+        return;
+    }
+
+    processingIds.add(expense.expenseId);
+    renderExpenses();
+
+    try {
+        const { upload } = await api.requestReceiptUpload(expense.expenseId, file.type);
+        await api.uploadToS3(upload, file);
+
+        const checked = await waitForReceiptCheck(expense.expenseId, expense.receiptCheckedAt);
+        if (!checked) {
+            showMessage("Receipt uploaded. It's still being checked, so refresh in a moment.", "info");
+        } else if (checked.receiptStatus === "ATTACHED") {
+            showMessage("Receipt attached.", "success");
+        } else {
+            showMessage("That file isn't a valid JPEG, PNG or PDF, so it was rejected.");
+        }
+    } catch (error) {
+        handleError(error);
+    } finally {
+        processingIds.delete(expense.expenseId);
+        if (!$("app-view").hidden) {
+            await loadExpenses();
+        }
+    }
+}
+
+async function viewReceipt(expense) {
+    // Open the tab NOW, while we're still inside the click, because pop-up
+    // blockers only allow new tabs as a direct response to a click.
+    // The address is filled in once we have the signed link.
+    const tab = window.open("", "_blank");
+    if (!tab) {
+        showMessage("Please allow pop-ups for this site to view receipts.");
+        return;
+    }
+    tab.opener = null; // the new tab can't reach back into our page (anti-tabnabbing)
+
+    try {
+        const { url } = await api.getReceiptLink(expense.expenseId);
+        tab.location = url;
+    } catch (error) {
+        tab.close();
+        handleError(error);
+    }
 }
 
 function readExpenseForm(fields) {
