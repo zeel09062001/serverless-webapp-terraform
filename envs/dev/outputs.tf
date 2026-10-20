@@ -29,3 +29,6 @@ output "receipts_queue_url" {
 output "receipts_dlq_url" {
   value = module.receipt_processing.dlq_url
 }
+output "worker_function_name" {
+  value = module.receipt_processing.worker_function_name
+}
