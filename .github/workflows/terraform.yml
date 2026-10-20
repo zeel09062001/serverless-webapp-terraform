@@ -16,6 +16,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
+  TF_VAR_report_sender_email: ${{ vars.REPORT_SENDER_EMAIL }}
   TF_VERSION: "1.16.1"
   TF_PLUGIN_CACHE_DIR: /home/runner/.terraform.d/plugin-cache
   TF_VAR_alert_email: ${{ vars.ALERT_EMAIL }}

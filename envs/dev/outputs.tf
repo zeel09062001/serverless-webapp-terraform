@@ -29,3 +29,6 @@ output "receipts_queue_url" {
 output "receipts_dlq_url" {
   value = module.receipt_processing.dlq_url
 }
+output "monthly_report_function" {
+  value = module.monthly_report.function_name
+}
