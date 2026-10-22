@@ -46,7 +46,14 @@ variable "schedule_timezone" {
   type        = string
   default     = "UTC"
 }
-
 variable "alarm_topic_arn" {
   type = string
+}
+variable "aws_region" {
+  type = string
+}
+variable "create_sender_identity" {
+  description = "Create the SES identity. False if another environment in this account already created it."
+  type        = bool
+  default     = true
 }

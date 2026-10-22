@@ -23,146 +23,76 @@ provider "aws" {
   }
 }
 
-locals {
-  # Websites allowed to call our API and buckets from a browser
-  browser_origins = [
-    module.frontend.website_url,
-    "http://localhost:8080", # local development
-  ]
-}
-
-# Expenses table (single-table design)
-module "database" {
-  source              = "../../modules/database"
-  project_name        = var.project_name
-  environment         = var.environment
-  deletion_protection = false # dev can be torn down freely
-}
-
-# User accounts and login
-module "auth" {
-  source              = "../../modules/auth"
-  project_name        = var.project_name
-  environment         = var.environment
-  deletion_protection = false # dev can be torn down freely
-  allow_password_auth = true  # lets us test login from the CLI in dev
-}
-
-# Website hosting: private S3 bucket + CloudFront
-module "frontend" {
-  source       = "../../modules/frontend"
+# The whole application, with dev's settings
+module "stack" {
+  source       = "../../modules/stack"
   project_name = var.project_name
   environment  = var.environment
   aws_region   = var.aws_region
-  site_dir     = "${path.root}/../../app/frontend"
+  app_dir      = "${path.root}/../../app"
+
+  deletion_protection    = false                     # dev can be torn down freely
+  allow_password_auth    = true                      # lets us test login from the CLI
+  extra_browser_origins  = ["http://localhost:8080"] # local development server
+  create_sender_identity = true                      # dev owns the SES identity
+  schedule_timezone      = "UTC"
+
+  alert_email         = var.alert_email
+  report_sender_email = var.report_sender_email
 }
 
-module "receipts" {
-  source               = "../../modules/receipts"
-  project_name         = var.project_name
-  environment          = var.environment
-  cors_allowed_origins = local.browser_origins
+# -----------------------------------------------------------------------------
+# Refactoring: everything moved inside module.stack.
+# These blocks tell Terraform the resources MOVED (update the state only)
+# instead of being deleted and recreated. They can be removed later, once
+# every environment's state has been updated.
+# -----------------------------------------------------------------------------
+moved {
+  from = module.database
+  to   = module.stack.module.database
 }
 
-# Alert emails
-module "monitoring" {
-  source       = "../../modules/monitoring"
-  project_name = var.project_name
-  environment  = var.environment
-  alert_email  = var.alert_email
+moved {
+  from = module.auth
+  to   = module.stack.module.auth
 }
 
-# Background processing: S3 -> SQS -> worker Lambda, with DLQ and alarm
-module "receipt_processing" {
-  source            = "../../modules/receipt_processing"
-  project_name      = var.project_name
-  environment       = var.environment
-  lambda_source_dir = "${path.root}/../../app/lambdas/receipt_worker"
-
-  receipts_bucket_name = module.receipts.bucket_name
-  receipts_bucket_arn  = module.receipts.bucket_arn
-  table_name           = module.database.table_name
-  table_arn            = module.database.table_arn
-  alarm_topic_arn      = module.monitoring.alerts_topic_arn
+moved {
+  from = module.frontend
+  to   = module.stack.module.frontend
 }
 
-# Monthly summary emails: Scheduler -> Lambda -> SES
-module "monthly_report" {
-  source            = "../../modules/monthly_report"
-  project_name      = var.project_name
-  environment       = var.environment
-  lambda_source_dir = "${path.root}/../../app/lambdas/monthly_report"
-
-  table_name    = module.database.table_name
-  table_arn     = module.database.table_arn
-  index_arns    = module.database.index_arns
-  user_pool_id  = module.auth.user_pool_id
-  user_pool_arn = module.auth.user_pool_arn
-
-  sender_email      = var.report_sender_email
-  schedule_timezone = "UTC" # change to your own, e.g. "Asia/Kolkata"
-  alarm_topic_arn   = module.monitoring.alerts_topic_arn
+moved {
+  from = module.receipts
+  to   = module.stack.module.receipts
 }
 
-# Dashboard, alarms and saved log queries for the whole system.
-# Depends on every other module, so it must come last in the dependency chain.
-module "observability" {
-  source       = "../../modules/observability"
-  project_name = var.project_name
-  environment  = var.environment
-  aws_region   = var.aws_region
-
-  api_id                    = module.api.api_id
-  api_access_log_group_name = module.api.access_log_group_name
-
-  lambda_function_names = {
-    api            = module.api.lambda_function_name
-    receipt_worker = module.receipt_processing.worker_function_name
-    monthly_report = module.monthly_report.function_name
-  }
-
-  receipts_queue_name = module.receipt_processing.queue_name
-  receipts_dlq_name   = module.receipt_processing.dlq_name
-  report_dlq_name     = module.monthly_report.dlq_name
-
-  alarm_topic_arn = module.monitoring.alerts_topic_arn
+moved {
+  from = module.api
+  to   = module.stack.module.api
 }
 
-# Expenses API: Lambda + API Gateway
-module "api" {
-  source            = "../../modules/api"
-  project_name      = var.project_name
-  environment       = var.environment
-  lambda_source_dir = "${path.root}/../../app/lambdas/expenses_api"
-
-  # Wiring: outputs of the database module become inputs of the API module
-  table_name = module.database.table_name
-  table_arn  = module.database.table_arn
-  index_arns = module.database.index_arns
-
-  cognito_issuer_url   = module.auth.issuer_url
-  cognito_client_id    = module.auth.client_id
-  cors_allowed_origins = local.browser_origins
-
-  receipts_bucket_name = module.receipts.bucket_name
-  receipts_bucket_arn  = module.receipts.bucket_arn
+moved {
+  from = module.monitoring
+  to   = module.stack.module.monitoring
 }
 
-# Website configuration, generated from other modules' outputs.
-# Lives here (not in the frontend module) to avoid a dependency cycle:
-# the API needs the website URL for CORS, and this file needs the API URL.
-resource "aws_s3_object" "frontend_config" {
-  bucket        = module.frontend.bucket_name
-  key           = "config.js"
-  content_type  = "application/javascript; charset=utf-8"
-  cache_control = "no-cache"
+moved {
+  from = module.receipt_processing
+  to   = module.stack.module.receipt_processing
+}
 
-  content = <<-EOT
-    window.APP_CONFIG = ${jsonencode({
-  apiUrl           = trimsuffix(module.api.api_url, "/")
-  region           = var.aws_region
-  userPoolId       = module.auth.user_pool_id
-  userPoolClientId = module.auth.client_id
-})};
-  EOT
+moved {
+  from = module.monthly_report
+  to   = module.stack.module.monthly_report
+}
+
+moved {
+  from = module.observability
+  to   = module.stack.module.observability
+}
+
+moved {
+  from = aws_s3_object.frontend_config
+  to   = module.stack.aws_s3_object.frontend_config
 }
