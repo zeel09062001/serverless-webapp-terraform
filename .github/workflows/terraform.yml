@@ -11,24 +11,30 @@ permissions:
   id-token: write
   contents: read
 
-concurrency:
-  group: terraform-dev
-  cancel-in-progress: false
-
 env:
-  TF_VAR_report_sender_email: ${{ vars.REPORT_SENDER_EMAIL }}
-  TF_VERSION: "1.16.1"
+  TF_VERSION: "1.16.1" 
   TF_PLUGIN_CACHE_DIR: /home/runner/.terraform.d/plugin-cache
   TF_VAR_alert_email: ${{ vars.ALERT_EMAIL }}
-  
+  TF_VAR_report_sender_email: ${{ vars.REPORT_SENDER_EMAIL }}
+
 jobs:
+  # ---------------------------------------------------------------------------
+  # Pull requests: plan BOTH environments, so reviewers see the effect on each
+  # ---------------------------------------------------------------------------
   plan:
-    name: Plan (dev)
+    name: Plan (${{ matrix.environment }})
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [dev, prod]
+    concurrency:
+      group: terraform-${{ matrix.environment }}
+      cancel-in-progress: false
     defaults:
       run:
-        working-directory: envs/dev
+        working-directory: envs/${{ matrix.environment }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -68,14 +74,69 @@ jobs:
       - name: Plan
         run: terraform plan -input=false
 
-  apply:
+  # ---------------------------------------------------------------------------
+  # Merge to main: deploy dev automatically...
+  # ---------------------------------------------------------------------------
+  apply-dev:
     name: Apply (dev)
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: dev
+    concurrency:
+      group: terraform-dev
+      cancel-in-progress: false
     defaults:
       run:
         working-directory: envs/dev
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Log in to AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Create provider cache folder
+        run: mkdir -p "$TF_PLUGIN_CACHE_DIR"
+
+      - name: Restore provider cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TF_PLUGIN_CACHE_DIR }}
+          key: terraform-providers-${{ runner.os }}-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: |
+            terraform-providers-${{ runner.os }}-
+
+      - name: Init
+        run: terraform init -input=false -lockfile=readonly
+
+      - name: Apply
+        run: terraform apply -auto-approve -input=false
+
+      - name: Show outputs
+        run: terraform output
+
+  # ---------------------------------------------------------------------------
+  # ...then wait for a human to approve, and deploy THE SAME COMMIT to prod
+  # ---------------------------------------------------------------------------
+  apply-prod:
+    name: Apply (prod)
+    needs: apply-dev # only after dev succeeded
+    runs-on: ubuntu-latest
+    environment: prod # required reviewers: the job waits for approval here
+    concurrency:
+      group: terraform-prod
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: envs/prod
     steps:
       - name: Check out code
         uses: actions/checkout@v4
