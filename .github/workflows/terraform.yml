@@ -21,8 +21,33 @@ jobs:
   # ---------------------------------------------------------------------------
   # Pull requests: plan BOTH environments, so reviewers see the effect on each
   # ---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
+  # Unit tests: run first, on every pull request and every merge
+  # ---------------------------------------------------------------------------
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # tests never need AWS, so this job can't get AWS credentials
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Install Python 3.12 (same as Lambda)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install test dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run tests
+        run: pytest -v
   plan:
     name: Plan (${{ matrix.environment }})
+    needs: test
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     strategy:
@@ -79,6 +104,7 @@ jobs:
   # ---------------------------------------------------------------------------
   apply-dev:
     name: Apply (dev)
+    needs: test # only after tests succeed
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: dev
