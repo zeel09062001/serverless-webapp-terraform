@@ -7,16 +7,26 @@
 data "aws_caller_identity" "current" {}
 
 locals {
-  name = "${var.project_name}-${var.environment}"
+  name                = "${var.project_name}-${var.environment}"
+  sender_identity_arn = "arn:aws:ses:${var.aws_region}:${data.aws_caller_identity.current.account_id}:identity/${var.sender_email}"
 }
 
 # -----------------------------------------------------------------------------
 # SES: the address emails are sent FROM. AWS emails it a verification link.
 # -----------------------------------------------------------------------------
+# SES identities are shared by the whole AWS account, so only ONE
+# environment may create a given address. count = 0 means "don't create".
 resource "aws_sesv2_email_identity" "sender" {
+  count          = var.create_sender_identity ? 1 : 0
   email_identity = var.sender_email
 }
 
+# Adding count changed this resource's address from .sender to .sender[0].
+# This tells Terraform it's the same identity, so it isn't recreated.
+moved {
+  from = aws_sesv2_email_identity.sender
+  to   = aws_sesv2_email_identity.sender[0]
+}
 # -----------------------------------------------------------------------------
 # Dead-letter queue for runs that fail every retry
 # -----------------------------------------------------------------------------
@@ -86,7 +96,7 @@ data "aws_iam_policy_document" "report" {
   statement {
     sid       = "SendReports"
     actions   = ["ses:SendEmail"]
-    resources = [aws_sesv2_email_identity.sender.arn]
+    resources = [local.sender_identity_arn]
 
     condition {
       test     = "StringEquals"
