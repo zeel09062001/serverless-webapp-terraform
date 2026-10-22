@@ -69,6 +69,7 @@ data "aws_cloudfront_cache_policy" "optimized" {
 }
 
 resource "aws_cloudfront_response_headers_policy" "security" {
+  #checkov:skip=CKV_AWS_259:HSTS is sent (1 year, subdomains). Rule also wants preload, which requires owning the domain; not possible for cloudfront.net.
   name = "${local.name}-security-headers"
 
   security_headers_config {
@@ -100,6 +101,10 @@ resource "aws_cloudfront_response_headers_policy" "security" {
 }
 
 resource "aws_cloudfront_distribution" "site" {
+  #checkov:skip=CKV_AWS_174:Default *.cloudfront.net certificate can't set a minimum TLS version. Revisit with a custom domain and ACM certificate.
+  #checkov:skip=CKV_AWS_68:WAF costs ~$5-10/month plus requests. Recommended before a real public launch (with rate-based rules).
+  #checkov:skip=CKV_AWS_86:Static files only; all API requests are already in API Gateway access logs.
+  #checkov:skip=CKV_AWS_310:Site is redeployed from Git by the pipeline in minutes; cross-region failover not justified.
   enabled             = true
   comment             = "${local.name} website"
   default_root_object = "index.html"     # what to serve for "/"

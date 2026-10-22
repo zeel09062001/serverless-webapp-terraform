@@ -103,6 +103,7 @@ resource "aws_cloudwatch_log_group" "api" {
 
 # --- The Lambda function -------------------------------------------------------
 resource "aws_lambda_function" "api" {
+  #checkov:skip=CKV_AWS_115:Concurrency is already limited by API Gateway throttling (10 rps, burst 20) before Lambda is invoked.
   function_name    = "${local.name}-expenses-api"
   role             = aws_iam_role.lambda.arn
   runtime          = "python3.12"
