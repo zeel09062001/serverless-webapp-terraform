@@ -135,6 +135,7 @@ resource "aws_iam_role" "github_actions" {
 # it. Record this in your security documentation as a known item to tighten
 # to least privilege later.
 resource "aws_iam_role_policy_attachment" "github_actions_admin" {
+  #checkov:skip=CKV_AWS_274:Known simplification. Trust policy limits use to this repo (immutable IDs). Top future-work item: least-privilege deploy role.
   role       = aws_iam_role.github_actions.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
