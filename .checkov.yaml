@@ -1,0 +1,51 @@
+# =============================================================================
+# Checkov configuration
+#
+# Rules under skip-check don't fit this ARCHITECTURE as a whole, so they're
+# skipped everywhere, each with its reason and what would change the decision.
+# Exceptions for ONE resource are written next to that resource instead,
+# as  #checkov:skip=<rule>:<reason>
+# =============================================================================
+framework:
+  - terraform
+skip-path:
+  - .venv
+quiet: true
+compact: true
+
+skip-check:
+  # Lambda in a VPC: our Lambdas only call AWS service APIs, secured by IAM.
+  # A VPC would add NAT Gateway or VPC endpoint cost, with no benefit.
+  # Revisit if we add resources that live in a VPC (e.g. RDS).
+  - CKV_AWS_117
+
+  # CMK for Lambda env vars: already encrypted at rest; ours hold no secrets,
+  # only resource names. Secrets would go to Secrets Manager instead.
+  - CKV_AWS_173
+
+  # CMK for log groups: CloudWatch Logs already encrypts at rest.
+  # Revisit if compliance requires customer-controlled keys.
+  - CKV_AWS_158
+
+  # CMK for DynamoDB: already encrypted at rest with an AWS-owned key.
+  # Can be switched later without replacing the table.
+  - CKV_AWS_119
+
+  # CMK for the scheduler: its only data is the scheduled-time placeholder.
+  - CKV_AWS_297
+
+  # 1-year log retention: we keep 14 days ON PURPOSE. Logs contain IP
+  # addresses and user IDs (data minimization), and it keeps costs low.
+  - CKV_AWS_338
+
+  # Lambda code signing: code only reaches AWS through the pipeline from
+  # reviewed commits. Revisit with build-once artifact deployments.
+  - CKV_AWS_272
+
+  # Function DLQs only apply to async invocations. The API is synchronous;
+  # the worker uses its SQS queue's DLQ; the report Lambda uses an
+  # on-failure destination (the newer equivalent, not recognized by this rule).
+  - CKV_AWS_116
+
+  # Geo restriction: the app has no legal limits on where it may be used.
+  - CKV_AWS_374
