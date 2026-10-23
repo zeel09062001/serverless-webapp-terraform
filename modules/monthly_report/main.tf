@@ -137,8 +137,7 @@ resource "aws_lambda_function" "report" {
   # Lambda's hard maximum is 15 minutes (see the fan-out discussion).
   timeout     = 300
   memory_size = 256
-  # reserved_concurrent_executions = 1
-  #checkov:skip=CKV_AWS_115:Account concurrency limit is 10 and AWS requires 10 to stay unreserved. Restore reserved_concurrent_executions = 1 after the quota increase.
+  reserved_concurrent_executions = 1
 
   tracing_config {
     mode = "Active"
