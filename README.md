@@ -237,22 +237,6 @@ Required checks on `main`: **Unit tests**, **Module tests (database)**, **Module
 
 ---
 
-## Documentation
-
-| Document | Contents |
-|---|---|
-| [Architecture](docs/architecture.md) | Components, user journeys, data model, API, environments, pipeline |
-| [Decisions log](docs/decisions.md) | Why each major choice was made, with alternatives and trade-offs |
-| [Security](docs/security.md) | Security measures by layer, accepted-risk register, future work |
-| [Operations runbook](docs/runbooks/operations.md) | Deploy, roll back, respond to each alarm, routine tasks, teardown |
-| [Data recovery runbook](docs/runbooks/restore-dynamodb.md) | Restoring expenses and receipts, with the drill record |
-| [Test report](docs/test-report.md) | All test types, results, and defects found |
-| [Performance report](docs/performance-report.md) | Latency, load, spike, memory tuning, and cost |
-| [Closure report](docs/closure-report.md) | Objectives, results, challenges, lessons learned, future work |
-| [Demo video script](docs/demo-video-script.md) | A 3-minute walkthrough plan |
-
----
-
 ## Cost
 
 At test-level traffic, both environments together cost **a few dollars a month or less**, mostly CloudWatch alarms beyond the free tier. Lambda, DynamoDB on-demand, S3, CloudFront, SQS, X-Ray, and Cognito all stay within or close to their free tiers at this scale. See the [performance report](docs/performance-report.md#cost) for per-request costs.
