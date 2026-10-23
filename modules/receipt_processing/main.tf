@@ -165,6 +165,8 @@ resource "aws_cloudwatch_log_group" "worker" {
 }
 
 resource "aws_lambda_function" "worker" {
+  #checkov:skip=CKV_AWS_115:Concurrency is capped by the SQS event source mapping (maximum_concurrency = 5); messages wait in the queue.
+
   function_name    = "${local.name}-receipt-worker"
   role             = aws_iam_role.worker.arn
   runtime          = "python3.12"
