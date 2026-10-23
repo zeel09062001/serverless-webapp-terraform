@@ -38,9 +38,19 @@ resource "aws_dynamodb_table" "expenses" {
   # The second "filing cabinet": same items, sorted by date
   global_secondary_index {
     name            = "GSI1"
-    hash_key        = "GSI1PK"
-    range_key       = "GSI1SK"
     projection_type = "ALL" # copy all attributes into the index
+
+    # The index's keys, in the same form as DynamoDB's own API (KeySchema).
+    # Replaces the deprecated hash_key / range_key arguments.
+    key_schema {
+      attribute_name = "GSI1PK"
+      key_type       = "HASH" # partition key: the "drawer"
+    }
+
+    key_schema {
+      attribute_name = "GSI1SK"
+      key_type       = "RANGE" # sort key: the order inside the drawer
+    }
   }
 
   # Continuous backups: restore to any second in the last 35 days
