@@ -44,12 +44,12 @@ resource "aws_dynamodb_table" "expenses" {
     # Replaces the deprecated hash_key / range_key arguments.
     key_schema {
       attribute_name = "GSI1PK"
-      key_type       = "HASH" # partition key: the "drawer"
+      key_type       = "HASH"
     }
 
     key_schema {
       attribute_name = "GSI1SK"
-      key_type       = "RANGE" # sort key: the order inside the drawer
+      key_type       = "RANGE"
     }
   }
 
