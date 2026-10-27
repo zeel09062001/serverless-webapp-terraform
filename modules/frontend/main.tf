@@ -40,6 +40,8 @@ locals {
 # S3 bucket: private storage for the website files
 # -----------------------------------------------------------------------------
 resource "aws_s3_bucket" "site" {
+  #checkov:skip=CKV_AWS_21:Website files are rebuilt from Git by the pipeline; Git is the version history.
+  #checkov:skip=CKV2_AWS_61:All files are managed by Terraform; nothing to expire.
   bucket = "${local.name}-web-${data.aws_caller_identity.current.account_id}"
 }
 
@@ -105,6 +107,8 @@ resource "aws_cloudfront_distribution" "site" {
   #checkov:skip=CKV_AWS_68:WAF costs ~$5-10/month plus requests. Recommended before a real public launch (with rate-based rules).
   #checkov:skip=CKV_AWS_86:Static files only; all API requests are already in API Gateway access logs.
   #checkov:skip=CKV_AWS_310:Site is redeployed from Git by the pipeline in minutes; cross-region failover not justified.
+    #checkov:skip=CKV2_AWS_42:Custom certificate needs a custom domain. Revisit with a domain and ACM certificate.
+  #checkov:skip=CKV2_AWS_47:No WAF yet (see CKV_AWS_68). Log4j is a Java vulnerability; nothing here runs Java.
   enabled             = true
   comment             = "${local.name} website"
   default_root_object = "index.html"     # what to serve for "/"
