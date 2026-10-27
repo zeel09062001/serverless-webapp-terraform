@@ -90,7 +90,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install Checkov
-        run: pip install "checkov>=3,<4"
+        run: pip install "checkov==3.3.30"
 
       - name: Scan Terraform
         run: checkov -d . --config-file .checkov.yaml

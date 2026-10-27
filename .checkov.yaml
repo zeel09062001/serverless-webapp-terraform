@@ -49,3 +49,19 @@ skip-check:
 
   # Geo restriction: the app has no legal limits on where it may be used.
   - CKV_AWS_374
+
+    # S3 encrypted with KMS: all buckets already use SSE-S3 encryption at rest.
+  # Same customer-managed-key decision as DynamoDB and logs.
+  - CKV_AWS_145
+
+  # Cross-region replication: a region-wide outage is accepted as out of
+  # scope in the DR plan; replication would double storage cost.
+  - CKV_AWS_144
+
+  # S3 server access logging: needs a separate log bucket and adds cost.
+  # API activity is in the API access logs. Revisit with CloudTrail data events.
+  - CKV_AWS_18
+
+  # S3 event notifications: only the receipts bucket needs one, and it HAS
+  # one (defined in modules/receipt_processing, which this rule can't see).
+  - CKV2_AWS_62

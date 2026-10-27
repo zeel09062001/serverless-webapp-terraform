@@ -45,9 +45,9 @@ locals {
 # -----------------------------------------------------------------------------
 
 resource "aws_s3_bucket" "tf_state" {
+  #checkov:skip=CKV2_AWS_61:Old state versions are kept deliberately for recovery. Future: expire versions older than a set age.
   bucket = local.state_bucket_name
 
-  # Safety net: Terraform will refuse to delete this bucket by accident
   lifecycle {
     prevent_destroy = true
   }
