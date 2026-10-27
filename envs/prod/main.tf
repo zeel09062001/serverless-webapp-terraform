@@ -31,7 +31,7 @@ module "stack" {
   aws_region   = var.aws_region
   app_dir      = "${path.root}/../../app"
 
-  deletion_protection    = true  # the table and user pool can't be deleted by accident
+  deletion_protection    = false
   allow_password_auth    = false # only the website's SRP login
   extra_browser_origins  = []    # only the real website may call the API
   create_sender_identity = false # dev already created it (same AWS account)
