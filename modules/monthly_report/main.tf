@@ -135,8 +135,8 @@ resource "aws_lambda_function" "report" {
 
   # Loops over every user, so it needs longer than an API call.
   # Lambda's hard maximum is 15 minutes (see the fan-out discussion).
-  timeout     = 300
-  memory_size = 256
+  timeout                        = 300
+  memory_size                    = 256
   reserved_concurrent_executions = 1
 
   tracing_config {
